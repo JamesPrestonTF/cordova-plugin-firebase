@@ -168,24 +168,30 @@ public class FirebasePlugin extends CordovaPlugin {
     }
 
     public static void sendNotification(Bundle bundle) {
-        if(!FirebasePlugin.hasNotificationsCallback()) {
+        if (!FirebasePlugin.hasNotificationsCallback()) {
             if (FirebasePlugin.notificationStack == null) {
                 FirebasePlugin.notificationStack = new ArrayList<Bundle>();
             }
             notificationStack.add(bundle);
             return;
         }
+
         final CallbackContext callbackContext = FirebasePlugin.notificationCallbackContext.get();
         if (callbackContext != null && bundle != null) {
+            // Copy the notification data to a format suitable for triggering the notification callback
             JSONObject json = new JSONObject();
-            Set<String> keys = bundle.keySet();
-            for (String key : keys) {
-                try {
+            try {
+                // Add the data from the notification
+                Set<String> keys = bundle.keySet();
+                for (String key : keys) {
                     json.put(key, bundle.get(key));
-                } catch (JSONException e) {
-                    callbackContext.error(e.getMessage());
-                    return;
                 }
+
+                // Indicate whether the app was in the foreground or background when the notification was sent
+                json.put("foreground", !FirebasePlugin.inBackground);
+            } catch (JSONException e) {
+                callbackContext.error(e.getMessage());
+                return;
             }
 
             PluginResult pluginresult = new PluginResult(PluginResult.Status.OK, json);
