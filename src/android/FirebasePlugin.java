@@ -125,16 +125,19 @@ public class FirebasePlugin extends CordovaPlugin {
 
     @Override
     public void onPause(boolean multitasking) {
+        Log.d(TAG, "FirebasePlugin.onPause");
         FirebasePlugin.inBackground = true;
     }
 
     @Override
     public void onResume(boolean multitasking) {
+        Log.d(TAG, "FirebasePlugin.onResume");
         FirebasePlugin.inBackground = false;
     }
 
     @Override
     public void onReset() {
+        Log.d(TAG, "FirebasePlugin.onReset");
         FirebasePlugin.notificationCallbackContext = null;
         FirebasePlugin.tokenRefreshCallbackContext = null;
     }
@@ -223,6 +226,7 @@ public class FirebasePlugin extends CordovaPlugin {
 
     @Override
     public void onNewIntent(Intent intent) {
+        Log.d(TAG, "FirebasePlugin.onNewIntent");
         super.onNewIntent(intent);
         FirebasePlugin.sendNotification(intent.getExtras());
     }

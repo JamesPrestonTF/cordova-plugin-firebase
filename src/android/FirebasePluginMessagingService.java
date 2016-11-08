@@ -30,6 +30,7 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
+        Log.d(TAG, "FirebasePluginMessagingService.onMessageReceived");
         // [START_EXCLUDE]
         // There are two types of messages data messages and notification messages. Data messages are handled
         // here in onMessageReceived whether the app is in the foreground or background. Data messages are the type
@@ -66,48 +67,42 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
         Log.d(TAG, "Notification Message Title: " + title);
         Log.d(TAG, "Notification Message Body/Text: " + text);
 
-        // TODO: Add option to developer to configure if show notification when app on foreground
         if (!TextUtils.isEmpty(text) || !TextUtils.isEmpty(title)) {
-            boolean showNotification = FirebasePlugin.inBackground() || !FirebasePlugin.hasNotificationsCallback();
-            sendNotification(id, title, text, remoteMessage.getData(), showNotification);
+            sendNotification(id, title, text, remoteMessage.getData());
         }
     }
 
-    private void sendNotification(String id, String title, String messageBody, Map<String, String> data, boolean showNotification) {
+    private void sendNotification(String id, String title, String messageBody, Map<String, String> data) {
         Bundle bundle = new Bundle();
         for (String key : data.keySet()) {
             bundle.putString(key, data.get(key));
         }
-        if (showNotification) {
-            Intent intent = new Intent(this, OnNotificationOpenReceiver.class);
-            intent.putExtras(bundle);
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, id.hashCode(), intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
 
-            Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
-                    .setContentTitle(title)
-                    .setContentText(messageBody)
-                    .setStyle(new NotificationCompat.BigTextStyle().bigText(messageBody))
-                    .setAutoCancel(true)
-                    .setSound(defaultSoundUri)
-                    .setContentIntent(pendingIntent);
+        Intent intent = new Intent(this, OnNotificationOpenReceiver.class);
+        intent.putExtras(bundle);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, id.hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
 
-            int resID = getResources().getIdentifier("notification_icon", "drawable", getPackageName());
-            if (resID != 0) {
-                notificationBuilder.setSmallIcon(resID);
-            } else {
-                notificationBuilder.setSmallIcon(getApplicationInfo().icon);
-            }
+        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
+                .setContentTitle(title)
+                .setContentText(messageBody)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(messageBody))
+                .setAutoCancel(true)
+                .setSound(defaultSoundUri)
+                .setContentIntent(pendingIntent);
 
-            NotificationManager notificationManager =
-                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-            notificationManager.notify(id.hashCode(), notificationBuilder.build());
+        int resID = getResources().getIdentifier("notification_icon", "drawable", getPackageName());
+        if (resID != 0) {
+            notificationBuilder.setSmallIcon(resID);
         } else {
-            bundle.putBoolean("tap", false);
-            FirebasePlugin.sendNotification(bundle);
+            notificationBuilder.setSmallIcon(getApplicationInfo().icon);
         }
+
+        NotificationManager notificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        notificationManager.notify(id.hashCode(), notificationBuilder.build());
     }
 
 
