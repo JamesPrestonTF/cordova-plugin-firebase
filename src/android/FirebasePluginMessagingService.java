@@ -23,87 +23,84 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "FirebasePlugin";
 
-    /**
-     * Called when message is received.
-     *
-     * @param remoteMessage Object representing the message received from Firebase Cloud Messaging.
-     */
+    /** Called when message is received. The message can either be a notification message when the
+     *  app is in the foreground, or a data message when the app is in either the foreground or background.
+     *  @param remoteMessage Object representing the message received from Firebase Cloud Messaging. */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
+        // Extract the information from the message
+        String id = remoteMessage.getMessageId();
+        RemoteMessage.Notification remoteMessageNotification = remoteMessage.getNotification();
+        Map<String, String> remoteMessageData = remoteMessage.getData();
+        String title = remoteMessageNotification != null ? remoteMessageNotification.getTitle() : remoteMessageData.get("title");
+        String body = remoteMessageNotification != null ? remoteMessageNotification.getBody() : remoteMessageData.get("body");
+
+        // Log the remote message information
         Log.d(TAG, "FirebasePluginMessagingService.onMessageReceived");
-        // [START_EXCLUDE]
-        // There are two types of messages data messages and notification messages. Data messages are handled
-        // here in onMessageReceived whether the app is in the foreground or background. Data messages are the type
-        // traditionally used with GCM. Notification messages are only received here in onMessageReceived when the app
-        // is in the foreground. When the app is in the background an automatically generated notification is displayed.
-        // When the user taps on the notification they are returned to the app. Messages containing both notification
-        // and data payloads are treated as notification messages. The Firebase console always sends notification
-        // messages. For more see: https://firebase.google.com/docs/cloud-messaging/concept-options
-        // [END_EXCLUDE]
-
-        // TODO(developer): Handle FCM messages here.
-        // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
-        String title;
-        String text;
-        String id;
-        if (remoteMessage.getNotification() != null) {
-            title = remoteMessage.getNotification().getTitle();
-            text = remoteMessage.getNotification().getBody();
-            id = remoteMessage.getMessageId();
-        } else {
-            title = remoteMessage.getData().get("title");
-            text = remoteMessage.getData().get("text");
-            id = remoteMessage.getData().get("id");
-        }
-
-        if(TextUtils.isEmpty(id)){
-            Random rand = new Random();
-            int  n = rand.nextInt(50) + 1;
-            id = Integer.toString(n);
-        }
-
         Log.d(TAG, "From: " + remoteMessage.getFrom());
         Log.d(TAG, "Notification Message id: " + id);
-        Log.d(TAG, "Notification Message Title: " + title);
-        Log.d(TAG, "Notification Message Body/Text: " + text);
+        Log.d(TAG, "Notification Message Title: " + (TextUtils.isEmpty(title) ? "<No title>" : title));
+        Log.d(TAG, "Notification Message Body: " + (TextUtils.isEmpty(body) ? "<No body>" : body));
 
-        if (!TextUtils.isEmpty(text) || !TextUtils.isEmpty(title)) {
-            sendNotification(id, title, text, remoteMessage.getData());
+        // If there is any message content, display a local notification - otherwise send straight to the plugin as though it was tapped
+        Bundle notificationData = compileNotificationData(id, title, body, remoteMessageData);
+        if (!TextUtils.isEmpty(title) || !TextUtils.isEmpty(body)) {
+            sendLocalNotification(id, title, body, notificationData);
+        }
+        else {
+            notificationData.putBoolean("tap", true);
+            FirebasePlugin.sendNotification(notificationData);
         }
     }
 
-    private void sendNotification(String id, String title, String messageBody, Map<String, String> data) {
+    private Bundle compileNotificationData(String id, String title, String body, Map<String, String> data) {
+        // Start with the extra data sent with the notification
         Bundle bundle = new Bundle();
         for (String key : data.keySet()) {
             bundle.putString(key, data.get(key));
         }
 
+        // Add specific data, overwriting existing data if necessary
+        if (!TextUtils.isEmpty(id)) { bundle.putString("id", id); }
+        if (!TextUtils.isEmpty(id)) { bundle.putString("title", title); }
+        if (!TextUtils.isEmpty(id)) { bundle.putString("body", body); }
+
+        // By default, say that the notification has not been tapped
+        bundle.putBoolean("tap", false);
+
+        return bundle;
+    }
+
+    private void sendLocalNotification(String id, String title, String body, Bundle notificationData) {
+        // Setup the intent launched when the user clicks the local notification
         Intent intent = new Intent(this, OnNotificationOpenReceiver.class);
-        intent.putExtras(bundle);
+        intent.putExtras(notificationData);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, id.hashCode(), intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
+        // Create the local notification
+        CharSequence notificationTitle = TextUtils.isEmpty(title) ? getPackageManager().getApplicationLabel(getApplicationInfo()) : title;
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
-                .setContentTitle(title)
-                .setContentText(messageBody)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(messageBody))
+                .setContentTitle(notificationTitle)
+                .setContentText(body)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                 .setAutoCancel(true)
                 .setSound(defaultSoundUri)
                 .setContentIntent(pendingIntent);
 
-        int resID = getResources().getIdentifier("notification_icon", "drawable", getPackageName());
-        if (resID != 0) {
-            notificationBuilder.setSmallIcon(resID);
+        // Find a suitable icon for the local notification
+        int notificationIconResourceId = getResources().getIdentifier("notification_icon", "drawable", getPackageName());
+        if (notificationIconResourceId != 0) {
+            notificationBuilder.setSmallIcon(notificationIconResourceId);
         } else {
             notificationBuilder.setSmallIcon(getApplicationInfo().icon);
         }
 
+        // Send the local notification 
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
         notificationManager.notify(id.hashCode(), notificationBuilder.build());
     }
-
 
 }

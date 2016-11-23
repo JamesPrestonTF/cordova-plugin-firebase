@@ -16,6 +16,8 @@ public class OnNotificationOpenReceiver extends BroadcastReceiver {
         Log.d(TAG, "OnNotificationOpenReceiver.onReceive");
 
         Bundle data = intent.getExtras();
+        data.putBoolean("tap", true);
+
         if (FirebasePlugin.inBackground()) {
             PackageManager pm = context.getPackageManager();
             Intent launchIntent = pm.getLaunchIntentForPackage(context.getPackageName());
