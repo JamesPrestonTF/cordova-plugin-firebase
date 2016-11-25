@@ -77,8 +77,14 @@ static FirebasePlugin *firebasePlugin;
           completionHandler:^(BOOL granted, NSError * _Nullable error) {
           }
         ];
-        [[UNUserNotificationCenter currentNotificationCenter] setDelegate:self];
-        [[FIRMessaging messaging] setRemoteMessageDelegate:self];
+        
+        id appDelegate = [[UIApplication sharedApplication] delegate];
+        
+        id<UNUserNotificationCenterDelegate> uncDelegate = (id<UNUserNotificationCenterDelegate>)appDelegate;
+        [[UNUserNotificationCenter currentNotificationCenter] setDelegate:uncDelegate];
+        
+        id<FIRMessagingDelegate> firDelegate = (id<FIRMessagingDelegate>)appDelegate;
+        [[FIRMessaging messaging] setRemoteMessageDelegate:firDelegate];
         #endif
 
         [[UIApplication sharedApplication] registerForRemoteNotifications];
