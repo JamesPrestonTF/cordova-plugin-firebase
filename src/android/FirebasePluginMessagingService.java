@@ -72,6 +72,11 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
     }
 
     private void sendLocalNotification(String id, String title, String body, Bundle notificationData) {
+        // If we could not get an ID from the original message, generate a new ID from the current time
+        if (id == null) {
+            id = String.valueOf(System.currentTimeMillis());
+        }
+
         // Setup the intent launched when the user clicks the local notification
         Intent intent = new Intent(this, OnNotificationOpenReceiver.class);
         intent.putExtras(notificationData);
@@ -100,7 +105,12 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
         // Send the local notification 
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(id.hashCode(), notificationBuilder.build());
+        if (notificationManager != null) {
+            notificationManager.notify(id.hashCode(), notificationBuilder.build());
+        }
+        else {
+            Log.d(TAG, "FirebasePluginMessagingService.sendLocalNotification - could not find notification manager.");
+        }
     }
 
 }
