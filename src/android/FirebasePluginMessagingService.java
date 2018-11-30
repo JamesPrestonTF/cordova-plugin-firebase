@@ -86,7 +86,7 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
         // Create the local notification
         CharSequence notificationTitle = TextUtils.isEmpty(title) ? getPackageManager().getApplicationLabel(getApplicationInfo()) : title;
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, "fcm_fallback_notification_channel")
                 .setContentTitle(notificationTitle)
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
