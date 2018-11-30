@@ -62,8 +62,8 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
 
         // Add specific data, overwriting existing data if necessary
         if (!TextUtils.isEmpty(id)) { bundle.putString("id", id); }
-        if (!TextUtils.isEmpty(id)) { bundle.putString("title", title); }
-        if (!TextUtils.isEmpty(id)) { bundle.putString("body", body); }
+        if (!TextUtils.isEmpty(title)) { bundle.putString("title", title); }
+        if (!TextUtils.isEmpty(body)) { bundle.putString("body", body); }
 
         // By default, say that the notification has not been tapped
         bundle.putBoolean("tap", false);
