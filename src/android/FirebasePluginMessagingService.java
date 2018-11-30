@@ -4,6 +4,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -34,6 +35,7 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
         Map<String, String> remoteMessageData = remoteMessage.getData();
         String title = remoteMessageNotification != null ? remoteMessageNotification.getTitle() : remoteMessageData.get("title");
         String body = remoteMessageNotification != null ? remoteMessageNotification.getBody() : remoteMessageData.get("body");
+        Integer colour = getMessageColour(remoteMessageNotification, remoteMessageData);
 
         // Log the remote message information
         Log.d(TAG, "FirebasePluginMessagingService.onMessageReceived");
@@ -41,16 +43,53 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
         Log.d(TAG, "Notification Message id: " + id);
         Log.d(TAG, "Notification Message Title: " + (TextUtils.isEmpty(title) ? "<No title>" : title));
         Log.d(TAG, "Notification Message Body: " + (TextUtils.isEmpty(body) ? "<No body>" : body));
+        Log.d(TAG, "Notification Message Colour: " + (colour == null ? "<No colour>" : Integer.toHexString(colour.intValue())));
 
         // If there is any message content, display a local notification - otherwise send straight to the plugin as though it was tapped
         Bundle notificationData = compileNotificationData(id, title, body, remoteMessageData);
         if (!TextUtils.isEmpty(title) || !TextUtils.isEmpty(body)) {
-            sendLocalNotification(id, title, body, notificationData);
+            sendLocalNotification(id, title, body, colour, notificationData);
         }
         else {
             notificationData.putBoolean("tap", true);
             FirebasePlugin.sendNotification(notificationData);
         }
+    }
+
+    private static final String DefaultNotificationColourKey = "com.google.firebase.messaging.default_notification_color";
+
+    private Integer getMessageColour(RemoteMessage.Notification remoteMessageNotification, Map<String, String> remoteMessageData) {
+        // Check the notification for a specified colour
+        Integer notificationColour = ParseColour(remoteMessageNotification != null ? remoteMessageNotification.getColor() : remoteMessageData.get("color"));
+        if (notificationColour != null) {
+            return notificationColour;
+        }
+
+        // Check the app metadata for a default colour
+        try {
+            ApplicationInfo applicationInfo = getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
+            if (applicationInfo.metaData.containsKey(DefaultNotificationColourKey)) {
+                return new Integer(applicationInfo.metaData.getInt(DefaultNotificationColourKey));
+            }
+        }
+        catch (PackageManager.NameNotFoundException exception) {
+            // Swallow errors getting the default colour - treat as though the colour has not been specified
+        }
+
+        // No colour specified
+        return null;
+    }
+
+    private static Integer ParseColour(String colour) {
+        if (!TextUtils.isEmpty(colour) && colour.length() == 7 && colour.startsWith("#")) {
+            try {
+                return new Integer(Integer.parseInt(colour.substring(1), 16));
+            }
+            catch (NumberFormatException exception) {
+                // Return default value below
+            }
+        }
+        return null;
     }
 
     private Bundle compileNotificationData(String id, String title, String body, Map<String, String> data) {
@@ -71,7 +110,7 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
         return bundle;
     }
 
-    private void sendLocalNotification(String id, String title, String body, Bundle notificationData) {
+    private void sendLocalNotification(String id, String title, String body, Integer colour, Bundle notificationData) {
         // If we could not get an ID from the original message, generate a new ID from the current time
         if (id == null) {
             id = String.valueOf(System.currentTimeMillis());
@@ -93,6 +132,11 @@ public class FirebasePluginMessagingService extends FirebaseMessagingService {
                 .setAutoCancel(true)
                 .setSound(defaultSoundUri)
                 .setContentIntent(pendingIntent);
+
+        // Set the colour of the notification - make sure colour is fully opaque (alpha value of 0xff)
+        if (colour != null) {
+            notificationBuilder.setColor(0xff000000 | colour.intValue());
+        }
 
         // Find a suitable icon for the local notification
         int notificationIconResourceId = getResources().getIdentifier("notification_icon", "drawable", getPackageName());
