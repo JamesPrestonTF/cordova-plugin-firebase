@@ -15,18 +15,17 @@ public class OnNotificationOpenReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "OnNotificationOpenReceiver.onReceive");
 
+        PackageManager pm = context.getPackageManager();
+
+        Intent launchIntent = pm.getLaunchIntentForPackage(context.getPackageName());
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+
         Bundle data = intent.getExtras();
         data.putBoolean("tap", true);
 
-        if (FirebasePlugin.inBackground()) {
-            PackageManager pm = context.getPackageManager();
-            Intent launchIntent = pm.getLaunchIntentForPackage(context.getPackageName());
-
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-            launchIntent.putExtras(data);
-            context.startActivity(launchIntent);
-        }
-
         FirebasePlugin.sendNotification(data);
+
+        launchIntent.putExtras(data);
+        context.startActivity(launchIntent);
     }
 }
